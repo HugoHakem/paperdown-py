@@ -82,10 +82,18 @@ If `ollama --version` crashes with an MLX/Metal stack trace, fix or reinstall Ol
 
 On a CUDA cluster, vLLM or SGLang is usually a better fit than Ollama. The conversion process still runs the GLM-OCR SDK locally for PDF loading, layout detection, cropping, and result assembly; vLLM serves only the GLM-OCR vision-language model over an OpenAI-compatible HTTP API.
 
+If this environment should also run the vLLM server, install the optional vLLM extra on the CUDA node:
+
+```bash
+uv sync --extra vllm
+```
+
+You can skip that extra when vLLM is provided by a cluster module, container, or separate service. The `vllm` extra is Linux-only and conflicts with the `mlx` extra because their model-serving stacks require incompatible transitive versions.
+
 Start vLLM on the GPU node:
 
 ```bash
-vllm serve zai-org/GLM-OCR \
+uv run vllm serve zai-org/GLM-OCR \
   --host 127.0.0.1 \
   --port 8080 \
   --served-model-name glm-ocr \
