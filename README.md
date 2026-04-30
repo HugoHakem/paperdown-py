@@ -5,6 +5,7 @@ This is the streamlined local-first version of the workflow. It uses `uv` to bui
 - `glmocr` from the GLM-OCR SDK
 - `glmocr[selfhosted]` dependencies, including `torch` and `torchvision` for local layout detection
 - an Ollama config for `glm-ocr:latest`
+- a vLLM/SGLang config for CUDA servers such as A100 nodes
 - an optional Apple Silicon MLX config for `mlx-community/GLM-OCR-bf16`
 
 The Python CLI calls `glmocr.GlmOcr` directly. There is no Rust wrapper, no SDK Flask server, and no subprocess call to the GLM-OCR CLI.
@@ -76,6 +77,46 @@ paperdown-py convert \
 ```
 
 If `ollama --version` crashes with an MLX/Metal stack trace, fix or reinstall Ollama first. In this Codex sandbox, the current `/usr/local/bin/ollama` crashes before printing a version, so Ollama must be tested from a normal macOS Terminal.
+
+## vLLM / SGLang Backend
+
+On a CUDA cluster, vLLM or SGLang is usually a better fit than Ollama. The conversion process still runs the GLM-OCR SDK locally for PDF loading, layout detection, cropping, and result assembly; vLLM serves only the GLM-OCR vision-language model over an OpenAI-compatible HTTP API.
+
+Start vLLM on the GPU node:
+
+```bash
+vllm serve zai-org/GLM-OCR \
+  --host 127.0.0.1 \
+  --port 8080 \
+  --served-model-name glm-ocr \
+  --speculative-config '{"method": "mtp", "num_speculative_tokens": 3}'
+```
+
+Check the route before converting:
+
+```bash
+curl http://127.0.0.1:8080/v1/models
+```
+
+Then convert with the vLLM config:
+
+```bash
+paperdown-py convert path/to/paper.pdf \
+  --config src/paperdown_py/configs/glmocr-local-vllm.yaml \
+  --output md-vllm \
+  --overwrite \
+  --timeout 1800
+```
+
+The vLLM config uses:
+
+```yaml
+api_path: /v1/chat/completions
+api_mode: openai
+model: glm-ocr
+```
+
+A `404` usually means the config is pointed at the wrong backend route. Ollama native uses `http://127.0.0.1:11434/api/generate` with `api_mode: ollama_generate`; vLLM and SGLang use `http://127.0.0.1:8080/v1/chat/completions` with `api_mode: openai`.
 
 ## Legacy MLX Backend
 

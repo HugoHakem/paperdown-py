@@ -1,3 +1,4 @@
+from importlib import resources
 from pathlib import Path
 
 from paperdown_py.cli import collect_inputs, count_image_blocks, default_config_path, sanitize_stem
@@ -29,3 +30,11 @@ def test_count_image_blocks() -> None:
 
 def test_default_config_is_ollama() -> None:
     assert default_config_path().name == "glmocr-local-ollama.yaml"
+
+
+def test_backend_configs_are_packaged() -> None:
+    config_dir = resources.files("paperdown_py").joinpath("configs")
+
+    assert config_dir.joinpath("glmocr-local-ollama.yaml").is_file()
+    assert config_dir.joinpath("glmocr-local-vllm.yaml").is_file()
+    assert config_dir.joinpath("glmocr-local-mlx.yaml").is_file()
